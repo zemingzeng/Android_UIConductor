@@ -1,0 +1,2901 @@
+# MTT Configuration - test-10AHS0CD00 - 2025-03-06 15:44:26.389579
+build_channels:
+- id: android_ci
+  name: Android CI
+  provider_name: Android
+- id: google_cloud_storage
+  name: Google Cloud Storage
+  provider_name: Google Cloud Storage
+- id: google_drive
+  name: Google Drive
+  provider_name: Google Drive
+device_actions:
+- description: 'Copy CTS media files to a device according to https://source.android.com/compatibility/cts/setup#file-installation
+
+    '
+  id: copy_cts_media
+  name: Copy CTS Media
+  test_resource_defs:
+  - default_download_url: https://dl.google.com/dl/android/cts/android-cts-media-1.5.zip
+    name: android-cts-media-1.5.zip
+    test_resource_type: UNKNOWN
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.RunHostCommandTargetPreparer
+    option_values:
+    - name: host-cmd-timeout
+      values:
+      - 30m
+    - name: host-setup-command
+      values:
+      - adb -s $SERIAL shell rm -rf /sdcard/test
+      - chmod u+x copy_media.sh
+      - ./copy_media.sh all -s $SERIAL
+    - name: work-dir
+      values:
+      - ${TF_WORK_DIR}/android-cts-media-1.5
+- description: 'Configure a device for running CTS, according to https://source.android.com/compatibility/cts/setup#config_device.
+
+    '
+  id: cts_device_setup
+  name: CTS Device Setup
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.DeviceSetup
+    option_values:
+    - name: force-skip-system-props
+    - name: wifi
+      values:
+      - 'ON'
+    - name: wifi-network
+      values:
+      - ${WIFI_SSID}
+    - name: wifi-psk
+      values:
+      - ${WIFI_PSK}
+    - name: no-disconnect-wifi-after-test
+    - name: set-system-setting
+      values:
+      - system_locales=en-US
+      - time_12_24=12
+    - name: set-secure-setting
+      values:
+      - location_providers_allowed=+gps
+      - user_setup_complete=1
+    - name: set-global-setting
+      values:
+      - development_settings_enabled=1
+      - ota_disable_automatic_update=1
+      - verifier_verify_adb_installs=0
+    - name: run-command
+      values:
+      - svc power stayon true
+      - locksettings clear --old 1234
+      - locksettings clear --old 12345
+      - locksettings clear --old 0000
+      - locksettings clear --old primary
+      - locksettings set-disabled true
+      - echo 'chrome --disable-fre' > /data/local/tmp/chrome-command-line
+  - class_name: com.android.tradefed.targetprep.RebootTargetPreparer
+  - class_name: com.android.tradefed.targetprep.UserCleaner
+- description: 'Configure a virtual device for running CTS, according to https://source.android.com/compatibility/cts/setup#config_device.
+
+    '
+  id: cts_virtual_device_setup
+  name: CTS Virtual Device Setup
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.DeviceSetup
+    option_values:
+    - name: force-skip-system-props
+    - name: wifi
+      values:
+      - 'ON'
+    - name: wifi-network
+      values:
+      - VirtWifi
+    - name: wifi-psk
+      values:
+      - ''
+    - name: no-disconnect-wifi-after-test
+    - name: set-system-setting
+      values:
+      - system_locales=en-US
+      - time_12_24=12
+    - name: set-secure-setting
+      values:
+      - location_providers_allowed=+gps
+      - user_setup_complete=1
+    - name: set-global-setting
+      values:
+      - development_settings_enabled=1
+      - ota_disable_automatic_update=1
+      - verifier_verify_adb_installs=0
+    - name: run-command
+      values:
+      - svc power stayon true
+      - locksettings clear --old 1234
+      - locksettings clear --old 12345
+      - locksettings clear --old 0000
+      - locksettings clear --old primary
+      - locksettings set-disabled true
+      - echo 'chrome --disable-fre' > /data/local/tmp/chrome-command-line
+  - class_name: com.android.tradefed.targetprep.RebootTargetPreparer
+  - class_name: com.android.tradefed.targetprep.UserCleaner
+- description: 'Dynamic Download MCTS based on the device preloaded Mainline Modules.
+
+    '
+  id: dynamic_download_mcts
+  name: Dynamic Download MCTS
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://dl.google.com/android/xts/mcts/tool/dynamic_download.zip
+    name: dynamic_download.zip
+    test_resource_type: UNKNOWN
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.RunHostCommandTargetPreparer
+    option_values:
+    - name: host-cmd-timeout
+      values:
+      - 90m
+    - name: host-setup-command
+      values:
+      - chmod u+x ./MctsDynamicDownloadPlugin_deploy.jar
+      - chmod u+x ./dynamic_download.sh
+      - ./dynamic_download.sh $SERIAL ${TF_WORK_DIR} ${MTT_STORAGE_PATH}
+    - name: work-dir
+      values:
+      - ${TF_WORK_DIR}
+- id: flash
+  name: Flash
+  test_resource_defs:
+  - name: bootloader.img
+    test_resource_type: DEVICE_IMAGE
+  - name: radio.img
+    test_resource_type: DEVICE_IMAGE
+  - name: img.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.RunHostCommandTargetPreparer
+    option_values:
+    - name: work-dir
+      values:
+      - ${TF_WORK_DIR}
+    - name: host-setup-command
+      values:
+      - adb -s $SERIAL reboot-bootloader
+      - fastboot -s $SERIAL -w
+      - fastboot -s $SERIAL flash bootloader bootloader.img
+      - fastboot -s $SERIAL reboot-bootloader
+      - fastboot -s $SERIAL flash radio radio.img
+      - fastboot -s $SERIAL reboot-bootloader
+      - fastboot -s $SERIAL update img.zip
+      - adb -s $SERIAL wait-for-device
+      - sleep 60
+    - name: host-cmd-timeout
+      values:
+      - 10m
+    - name: use-flashing-permit
+- description: Configures the device for CTS-Verifier testing according to https://source.android.com/compatibility/cts/verifier#setup.
+  id: gs://android-test-catalog/prod/cts_verifier.yaml::install_cts_verifier.10_0
+  name: Install CTS-Verifier 10.0
+  test_resource_defs:
+  - default_download_url: https://dl.google.com/dl/android/cts/android-cts-verifier-10_r7-linux_x86-arm.zip
+    name: android-cts-verifier.zip
+    test_resource_type: UNKNOWN
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.RunHostCommandTargetPreparer
+    option_values:
+    - name: host-setup-command
+      values:
+      - adb -s $SERIAL shell service call overlay 6 s16 "com.android.internal.systemui.navbar.threebutton"
+        i32 0
+      - adb -s $SERIAL shell settings put global hidden_api_policy 1
+      - adb -s $SERIAL install -r -g -d ${TF_WORK_DIR}/android-cts-verifier/CtsVerifier.apk
+      - adb -s $SERIAL shell appops set com.android.cts.verifier android:read_device_identifiers
+        allow
+    - name: host-cmd-timeout
+      values:
+      - 5m
+- description: Configures the device for CTS-Verifier testing according to https://source.android.com/compatibility/cts/verifier#setup.
+  id: gs://android-test-catalog/prod/cts_verifier.yaml::install_cts_verifier.11_0
+  name: Install CTS-Verifier 11.0
+  test_resource_defs:
+  - default_download_url: https://dl.google.com/dl/android/cts/android-cts-verifier-11_r3-linux_x86-arm.zip
+    name: android-cts-verifier.zip
+    test_resource_type: UNKNOWN
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.RunHostCommandTargetPreparer
+    option_values:
+    - name: host-setup-command
+      values:
+      - adb -s $SERIAL shell service call overlay 6 s16 "com.android.internal.systemui.navbar.threebutton"
+        i32 0
+      - adb -s $SERIAL shell settings put global hidden_api_policy 1
+      - adb -s $SERIAL install -r -g -d ${TF_WORK_DIR}/android-cts-verifier/CtsVerifier.apk
+      - adb -s $SERIAL shell appops set com.android.cts.verifier android:read_device_identifiers
+        allow
+      - adb -s $SERIAL shell appops set com.android.cts.verifier MANAGE_EXTERNAL_STORAGE
+        0
+    - name: host-cmd-timeout
+      values:
+      - 5m
+- description: 'The device will be flashed with GKI 5.10 boot image. (Please see https://docs.partner.android.com/gms/testing/vts/vts-release-notes
+    for details. Please see https://docs.partner.android.com/gms/testing/vts for published
+    GSI/GKI image.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::android12_gki_5.10
+  name: Flash android12-5.10 GKI Boot Image (Pixel 6)
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://drive.google.com/open?id=194G_y2COTMcrNwa4I8079spFis-nM7il
+    name: gki.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.GkiDeviceFlashPreparer
+    option_values:
+    - name: gki-boot-image-name
+      values:
+      - gki.zip
+    - name: boot-image-file-name
+      values:
+      - boot-5.10-lz4.img
+- description: 'The device will be flashed with Android 12 GKI 5.10 boot image. (Please
+    see https://docs.partner.android.com/gms/testing/vts/vts-release-notes for details.
+    Please see https://docs.partner.android.com/gms/testing/vts for published GSI/GKI
+    image.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::android12_gki_5.4
+  name: 'Flash Android 12 GKI Boot Image with Kernel 5.4 '
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://drive.google.com/open?id=194G_y2COTMcrNwa4I8079spFis-nM7il
+    name: gki.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.GkiDeviceFlashPreparer
+    option_values:
+    - name: gki-boot-image-name
+      values:
+      - gki.zip
+    - name: boot-image-file-name
+      values:
+      - boot-5.4-gz.img
+- description: 'Use Dynamic System Update to boot a device with Android 10 GSI (Generic
+    System Image). (Please see https://docs.partner.android.com/gms/testing/vts/treble-compliance?hl=en#sample-test-flow-10
+    to find more information. Please see https://docs.partner.android.com/gms/testing/vts?hl=en
+    for GSI published builds.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::dsu_with_android10_gsi
+  name: Dynamic System Update with Android 10 GSI
+  test_resource_defs:
+  - decompress: true
+    decompress_dir: gsi
+    default_download_url: https://drive.google.com/open?id=1tw9WzSlwJYb3_PbFxJiME5e4dkGez6oU
+    name: gsi.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.DynamicSystemPreparer
+    option_values:
+    - name: system-image-zip-name
+      values:
+      - gsi.zip
+- description: 'Use Dynamic System Update to boot a device with Android 11 GSI (Generic
+    System Image). (Please see https://docs.partner.android.com/gms/testing/vts/vts-release-notes
+    for details. Please see https://docs.partner.android.com/gms/testing/vts for published
+    GSI image.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::dsu_with_android11_gsi
+  name: Dynamic System Update with Android 11 GSI
+  test_resource_defs:
+  - decompress: true
+    decompress_dir: gsi
+    default_download_url: https://drive.google.com/open?id=1GzUaQ1GfSJWmPMTdcfK9R3XdN6S32QQC
+    name: gsi.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.DynamicSystemPreparer
+    option_values:
+    - name: system-image-zip-name
+      values:
+      - gsi.zip
+- description: 'Use Dynamic System Update to boot a device with Android 11 GSI and
+    5.4 GKI boot image. Only works with device with userdebug build or with vendor_boot-debug.img.
+    The device will be wiped after flashing GKI boot image. (Please see https://docs.partner.android.com/gms/testing/vts/vts-release-notes
+    for details. Please see https://docs.partner.android.com/gms/testing/vts for published
+    GSI image.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::dsu_with_android11_gsi_and_gki_5.4
+  name: Dynamic System Update with Android 11 GSI and GKI 5.4 Kernel
+  test_resource_defs:
+  - decompress: true
+    decompress_dir: gsi
+    default_download_url: https://drive.google.com/open?id=100LcIZMNXOtnYUteVZfC6ES7shxmKcL1
+    name: gsi.zip
+    test_resource_type: DEVICE_IMAGE
+  - name: vendor_boot-debug.img
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.GkiDeviceFlashPreparer
+    option_values:
+    - name: gki-boot-image-name
+      values:
+      - gsi.zip
+    - name: vendor-boot-image-name
+      values:
+      - vendor_boot-debug.img
+  - class_name: com.android.tradefed.targetprep.DynamicSystemPreparer
+    option_values:
+    - name: system-image-zip-name
+      values:
+      - gsi.zip
+- description: 'Use Dynamic System Update to boot a device with Android 12 GSI (Generic
+    System Image). (Please see https://docs.partner.android.com/gms/testing/vts/vts-release-notes
+    for details. Please see https://docs.partner.android.com/gms/testing/vts for published
+    GSI image.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::dsu_with_android12_gsi
+  name: Dynamic System Update with Android 12 GSI
+  test_resource_defs:
+  - decompress: true
+    decompress_dir: gsi
+    default_download_url: https://drive.google.com/open?id=15nr6fr9bYSj6NBsE2u6sH6PYs5SnP8Vw
+    name: gsi.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.DynamicSystemPreparer
+    option_values:
+    - name: system-image-zip-name
+      values:
+      - gsi.zip
+- description: 'Use Dynamic System Update to boot a device with Android 12 GSI (Generic
+    System Image). (Please see https://docs.partner.android.com/gms/testing/vts/vts-release-notes
+    for details. Please see https://docs.partner.android.com/gms/testing/vts for published
+    GSI image.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::dsu_with_android12l_gsi
+  name: Dynamic System Update with Android 12L GSI
+  test_resource_defs:
+  - decompress: true
+    decompress_dir: gsi
+    default_download_url: https://drive.google.com/open?id=1hV7wZPx96wNDEyWWj6EeWXeUkCMZYMCN
+    name: gsi.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.DynamicSystemPreparer
+    option_values:
+    - name: system-image-zip-name
+      values:
+      - gsi.zip
+- description: 'Use Dynamic System Update to boot a device with Android 13 GSI (Generic
+    System Image). (Please see https://docs.partner.android.com/gms/testing/vts/vts-release-notes
+    for details. Please see https://docs.partner.android.com/gms/testing/vts for published
+    GSI image.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::dsu_with_android13_gsi
+  name: Dynamic System Update with Android 13 GSI
+  test_resource_defs:
+  - decompress: true
+    decompress_dir: gsi
+    default_download_url: https://drive.google.com/open?id=1zG50GLjCDvSU0aceavCOQQIOMIHxOznX
+    name: gsi.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.DynamicSystemPreparer
+    option_values:
+    - name: system-image-zip-name
+      values:
+      - gsi.zip
+- description: 'Use fastboot flash to flash devcie with Android 10 GSI (Generic System
+    Image) (Please see https://docs.partner.android.com/gms/testing/vts/treble-compliance?hl=en#manually-flashing-gsi-fastbootd
+    for more information. Please see https://docs.partner.android.com/gms/testing/vts?hl=en
+    for GSI published builds.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::fastboot_flash_with_android10_gsi
+  name: Fastboot Flash with Android 10 GSI
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/open?id=1NdBFVk-n7oUzXw_OTwPaj-SCRU_UIaMd
+    name: gsi.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.GsiDeviceFlashPreparer
+    option_values:
+    - name: system-image-zip-name
+      values:
+      - gsi.zip
+    - name: vbmeta-image-zip-name
+      values:
+      - gsi.zip
+- description: 'Use fastboot to flash device with Android 11 GSI (Generic System Image).
+    (Please see https://docs.partner.android.com/gms/testing/vts/vts-release-notes
+    for details. Please see https://docs.partner.android.com/gms/testing/vts for published
+    GSI image.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::fastboot_flash_with_android11_gsi
+  name: Fastboot Flash with Android 11 GSI
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/open?id=1GzUaQ1GfSJWmPMTdcfK9R3XdN6S32QQC
+    name: gsi.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.GsiDeviceFlashPreparer
+    option_values:
+    - name: system-image-zip-name
+      values:
+      - gsi.zip
+    - name: vbmeta-image-zip-name
+      values:
+      - gsi.zip
+- description: 'Use fastboot to flash a device with Android 11 GSI and 5.4 GKI boot
+    image. (Please see https://docs.partner.android.com/gms/testing/vts/vts-release-notes
+    for details. Please see https://docs.partner.android.com/gms/testing/vts for published
+    GSI/GKI image.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::fastboot_flash_with_android11_gsi_and_gki_5.4
+  name: Fastboot flash Android11 GSI and GKI 5.4 boot image
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/open?id=100LcIZMNXOtnYUteVZfC6ES7shxmKcL1
+    name: gsi.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.GsiDeviceFlashPreparer
+    option_values:
+    - name: system-image-zip-name
+      values:
+      - gsi.zip
+    - name: vbmeta-image-zip-name
+      values:
+      - gsi.zip
+    - name: boot-image-zip-name
+      values:
+      - gsi.zip
+    - name: boot-image-file-name
+      values:
+      - boot-5.4-gz.img
+- description: 'Use fastboot to flash device with Android 12 GSI (Generic System Image).
+    (Please see https://docs.partner.android.com/gms/testing/vts/vts-release-notes
+    for details. Please see https://docs.partner.android.com/gms/testing/vts for published
+    GSI image.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::fastboot_flash_with_android12_gsi
+  name: Fastboot Flash with Android 12 GSI
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/open?id=15nr6fr9bYSj6NBsE2u6sH6PYs5SnP8Vw
+    name: gsi.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.GsiDeviceFlashPreparer
+    option_values:
+    - name: system-image-zip-name
+      values:
+      - gsi.zip
+    - name: vbmeta-image-zip-name
+      values:
+      - gsi.zip
+- description: 'Use fastboot to flash device with Android 12 GSI (Generic System Image).
+    (Please see https://docs.partner.android.com/gms/testing/vts/vts-release-notes
+    for details. Please see https://docs.partner.android.com/gms/testing/vts for published
+    GSI image.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::fastboot_flash_with_android12l_gsi
+  name: Fastboot Flash with Android 12L GSI
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/open?id=1hV7wZPx96wNDEyWWj6EeWXeUkCMZYMCN
+    name: gsi.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.GsiDeviceFlashPreparer
+    option_values:
+    - name: system-image-zip-name
+      values:
+      - gsi.zip
+    - name: vbmeta-image-zip-name
+      values:
+      - gsi.zip
+- description: 'Use fastboot to flash device with Android 13 GSI (Generic System Image).
+    (Please see https://docs.partner.android.com/gms/testing/vts/vts-release-notes
+    for details. Please see https://docs.partner.android.com/gms/testing/vts for published
+    GSI image.)
+
+    '
+  id: gs://android-test-catalog/prod/gms.yaml::fastboot_flash_with_android13_gsi
+  name: Fastboot Flash with Android 13 GSI
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/open?id=1zG50GLjCDvSU0aceavCOQQIOMIHxOznX
+    name: gsi.zip
+    test_resource_type: DEVICE_IMAGE
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.GsiDeviceFlashPreparer
+    option_values:
+    - name: system-image-zip-name
+      values:
+      - gsi.zip
+    - name: vbmeta-image-zip-name
+      values:
+      - gsi.zip
+- id: gs://android-test-catalog/prod/gms.yaml::gts_media_file_copy
+  name: GTS Media File Copy
+  test_resource_defs:
+  - default_download_url: https://storage.googleapis.com/exoplayer-test-media-1/gen-4/exoplayer-gts-media.zip
+    name: exoplayer-gts-media.zip
+    test_resource_type: UNKNOWN
+  - default_download_url: https://storage.googleapis.com/youtube-test-media/gts/GtsYouTubeTestCases-media-1.0.zip
+    name: GtsYouTubeTestCases-media-1.0.zip
+    test_resource_type: UNKNOWN
+  - default_download_url: https://storage.googleapis.com/gts_media/wvmedia-gts-media.zip
+    name: wvmedia-gts-media.zip
+    test_resource_type: UNKNOWN
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.RunHostCommandTargetPreparer
+    option_values:
+    - name: work-dir
+      values:
+      - ${TF_WORK_DIR}
+    - name: host-cmd-timeout
+      values:
+      - 30m
+    - name: host-setup-command
+      values:
+      - adb -s $SERIAL shell rm -rf /sdcard/gts /sdcard/test /sdcard/wvmedia
+      - adb -s $SERIAL push gts /sdcard/
+      - adb -s $SERIAL push test /sdcard/
+      - adb -s $SERIAL push wvmedia /sdcard/
+    - name: use-flashing-permit
+- description: Installs the APKs and dependencies required to run UIConductor.
+  id: gs://android-test-catalog/prod/uicd.yaml::install_uicd
+  name: Install UIConductor
+  test_resource_defs:
+  - default_download_url: https://github.com/google/android-uiconductor/raw/36a3c4de4a84420c1d8fd74f83d9026ef42a25f5/prebuild/deps/xmldumper_apks/uicd-xmldumper-server-v3.1.2.apk
+    name: uicd-xmldumper-server.apk
+    test_resource_type: UNKNOWN
+  - decompress: true
+    decompress_dir: uicd-basepath/pyscripts
+    default_download_url: https://github.com/google/android-uiconductor/raw/36a3c4de4a84420c1d8fd74f83d9026ef42a25f5/prebuild/pyuiautomator.tar.gz
+    name: pyuiautomator.tar.gz
+    test_resource_type: UNKNOWN
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.InstallApkSetup
+    option_values:
+    - name: apk-path
+      values:
+      - ${TF_WORK_DIR}/uicd-xmldumper-server.apk
+- description: 'Setup a local virtual device. The device type is Cuttlefish: https://source.android.com/setup/create/cuttlefish
+
+    '
+  device_spec: \b(device_serial:\S+:local-virtual-device-\d+|device_type:LOCAL_VIRTUAL)\b
+  id: lvd_setup
+  name: Local Virtual Device Setup
+  test_resource_defs:
+  - decompress: true
+    decompress_dir: lvd_tools
+    name: cvd-host_package.tar.gz
+    test_resource_type: UNKNOWN
+  - decompress: true
+    decompress_dir: lvd_images
+    name: device
+    test_resource_type: DEVICE_IMAGE
+  - default_download_url: file:///bin/acloud_prebuilt
+    name: acloud
+    test_resource_type: UNKNOWN
+  tradefed_options:
+  - name: gce-driver-path
+    values:
+    - ${TF_WORK_DIR}/acloud
+  - name: gce-boot-timeout
+    values:
+    - 10m
+  - name: device-type
+    values:
+    - LOCAL_VIRTUAL_DEVICE
+  - name: gce-driver-param
+    values:
+    - --avd-type
+    - cuttlefish
+    - --boot-timeout
+    - '540'
+  - name: gce-driver-file-param
+    values:
+    - local-image=${TF_WORK_DIR}/lvd_images
+    - local-tool=${TF_WORK_DIR}/lvd_tools
+  - name: disable-usb-reset
+    values:
+    - 'true'
+- id: reboot
+  name: Reboot
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.RebootTargetPreparer
+- id: reset
+  name: Factory Reset
+  tradefed_target_preparers:
+  - class_name: com.android.tradefed.targetprep.DeviceWiper
+- description: 'Setup a remote virtual device. The device type is Cuttlefish: https://source.android.com/setup/create/cuttlefish
+
+    '
+  device_spec: \b(device_serial:\S+:gce-device-\S+|device_type:REMOTE_VIRTUAL)\b
+  id: rvd_setup
+  name: Remote Virtual Device Setup
+  test_resource_defs:
+  - decompress: false
+    name: cvd-host_package.tar.gz
+    test_resource_type: UNKNOWN
+  - decompress: false
+    name: device
+    test_resource_type: DEVICE_IMAGE
+  - default_download_url: file:///bin/acloud_prebuilt
+    name: acloud
+    test_resource_type: UNKNOWN
+  tradefed_options:
+  - name: gce-driver-path
+    values:
+    - ${TF_WORK_DIR}/acloud
+  - name: gce-boot-timeout
+    values:
+    - 10m
+  - name: device-type
+    values:
+    - GCE_DEVICE
+  - name: gce-driver-param
+    values:
+    - --avd-type
+    - cuttlefish
+    - --boot-timeout
+    - '540'
+    - --no-pull-log
+    - --no-autoconnect
+    - --yes
+    - --skip-pre-run-check
+    - --remote-image-dir
+    - mtt_rvd/${TF_ATTEMPT_ID}
+  - name: gce-driver-file-param
+    values:
+    - local-image=${TF_WORK_DIR}/device
+    - cvd-host-package=${TF_WORK_DIR}/cvd-host_package.tar.gz
+  - name: allow-gce-boot-timeout-override
+    values:
+    - 'true'
+  - name: wait-gce-teardown
+    values:
+    - 'true'
+  - name: gce-private-key-path
+    values:
+    - /tmp/rvd_id_rsa
+  - name: instance-type
+    values:
+    - CUTTLEFISH
+  - name: disable-usb-reset
+    values:
+    - 'true'
+  - name: parallel-pre-invocation-setup
+    values:
+    - 'true'
+  - name: parallel-pre-invocation-setup-timeout
+    values:
+    - 15m
+file_cleaner:
+  configs:
+  - description: Clean up test results
+    directories:
+    - /data/app_default_bucket/test_runs
+    name: Clean up test results
+    policy_names:
+    - Archive directories not modified
+  - description: Clean up test work files
+    directories:
+    - /data/tmp
+    name: Clean up test work files
+    policy_names:
+    - Delete directories not modified and accessed
+  policies:
+  - criteria:
+    - params:
+      - name: ttl
+        value: 7 days
+      type: LAST_MODIFIED_TIME
+    name: Archive directories not modified
+    operation:
+      type: ARCHIVE
+    target: DIRECTORY
+  - criteria:
+    - params:
+      - name: ttl
+        value: 7 days
+      type: LAST_MODIFIED_TIME
+    - params:
+      - name: ttl
+        value: 7 days
+      type: LAST_ACCESS_TIME
+    name: Delete directories not modified and accessed
+    operation:
+      type: DELETE
+    target: DIRECTORY
+node_config:
+  env_vars:
+  - name: WIFI_SSID
+    value: ''
+  - name: WIFI_PSK
+    value: ''
+test_run_actions:
+- description: Uploads Mainline test results to Google using the AnTS Relay service.
+  hook_class_name: MainlineAntsRelayHook
+  id: gs://android-test-catalog/prod/mts.yaml::mainline_ants_relay
+  name: Upload Mainline Results
+  options:
+  - name: bucket
+  - name: train_id
+  phases:
+  - AFTER_ATTEMPT
+  - AFTER_RUN
+- description: Uploads test results to the Android Partner Approval (APA)
+  hook_class_name: APFEReportUploadHook
+  id: gs://android-test-catalog/prod/partner.yaml::apa
+  name: Upload to APA
+  options:
+  - name: company_id
+  phases:
+  - ON_SUCCESS
+  - MANUAL
+tests:
+- command: uicd/uiconductor --work-dir ${TF_WORK_DIR} --uicd-cli-jar uicd_cli.jar
+    --uicd-test default tests
+  context_file_pattern: uicd_results.pb
+  default_test_run_parameters: {}
+  description: Runs pre-recorded UIConductor test cases.
+  id: '51'
+  name: UIConductor Test SelfDefine
+  output_file_patterns:
+  - uicd-basepath/output/.*
+  retry_command_line: uicd/uiconductor --work-dir ${TF_WORK_DIR} --uicd-cli-jar uicd_cli.jar
+    --uicd-test default tests --previous-results uicd_results.pb
+  test_resource_defs:
+  - default_download_url: https://github.com/google/android-uiconductor/raw/36a3c4de4a84420c1d8fd74f83d9026ef42a25f5/prebuild/uicdcli/uicd-commandline.jar
+    name: uicd_cli.jar
+    test_resource_type: UNKNOWN
+  - decompress: true
+    decompress_dir: tests
+    name: uicd_test.zip
+    test_resource_type: UNKNOWN
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite 10.0 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: android.cts.10_0.arm
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS 10.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  - android-cts/results/[^/]+/proto/test-record\.pb.*
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://dl.google.com/dl/android/cts/android-cts-10_r16-linux_x86-arm.zip
+    mount_zip: true
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite 11.0 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: android.cts.11_0
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  module_config_pattern: android-cts/testcases/.*\.config
+  module_execution_args: -m ${MODULE_NAME}
+  name: CTS 11.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  - android-cts/results/[^/]+/proto/test-record\.pb.*
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://dl.google.com/dl/android/cts/android-cts-11_r15-linux_x86-arm.zip
+    mount_zip: true
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding --max-testcase-run-count 2 --retry-strategy
+    RETRY_ANY_FAILURE
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite 12.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: android.cts.12_0
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  module_config_pattern: android-cts/testcases/.*\.config
+  module_execution_args: -m ${MODULE_NAME}
+  name: CTS 12.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  - android-cts/results/[^/]+/proto/test-record\.pb.*
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://dl.google.com/dl/android/cts/android-cts-12_r14-linux_x86-arm.zip
+    mount_zip: true
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding --max-testcase-run-count 2 --retry-strategy
+    RETRY_ANY_FAILURE
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite 12.1 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: android.cts.12_1
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  module_config_pattern: android-cts/testcases/.*\.config
+  module_execution_args: -m ${MODULE_NAME}
+  name: CTS 12.1 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  - android-cts/results/[^/]+/proto/test-record\.pb.*
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://dl.google.com/dl/android/cts/android-cts-12.1_r12-linux_x86-arm.zip
+    mount_zip: true
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding --max-testcase-run-count 2 --retry-strategy
+    RETRY_ANY_FAILURE
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite 13.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: android.cts.13_0
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  module_config_pattern: android-cts/testcases/.*\.config
+  module_execution_args: -m ${MODULE_NAME}
+  name: CTS 13.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  - android-cts/results/[^/]+/proto/test-record\.pb.*
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://dl.google.com/dl/android/cts/android-cts-13_r10-linux_x86-arm.zip
+    mount_zip: true
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding --max-testcase-run-count 2 --retry-strategy
+    RETRY_ANY_FAILURE
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite 14.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: android.cts.14_0
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx16g
+  module_config_pattern: android-cts/testcases/.*\.config
+  module_execution_args: -m ${MODULE_NAME}
+  name: CTS 14.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  - android-cts/results/[^/]+/proto/test-record\.pb.*
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://dl.google.com/dl/android/cts/android-cts-14_r6-linux_x86-arm.zip
+    mount_zip: true
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding --max-testcase-run-count 2 --retry-strategy
+    RETRY_ANY_FAILURE
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite 15.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: android.cts.15_0
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx24g
+  module_config_pattern: android-cts/testcases/.*\.config
+  module_execution_args: -m ${MODULE_NAME}
+  name: CTS 15.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  - android-cts/results/[^/]+/proto/test-record\.pb.*
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://dl.google.com/dl/android/cts/android-cts-15_r2-linux_x86-arm.zip
+    mount_zip: true
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  - decompress: true
+    default_download_url: https://dl.google.com/android/xts/mcts/tool/dynamic_download.zip
+    name: dynamic_download.zip
+    test_resource_type: UNKNOWN
+  use_dynamic_download_mcts: true
+  visibility_type: PUBLIC
+- command: cts-suite
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite 8.0 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: android.cts.8_0.arm
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS 8.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  - android-cts/results/[^/]+/proto/test-record\.pb.*
+  result_file: test_result.xml
+  retry_command_line: cts --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://dl.google.com/dl/android/cts/android-cts-8.0_r26-linux_x86-arm.zip
+    mount_zip: true
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  visibility_type: PUBLIC
+- command: cts-suite
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite 8.1 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: android.cts.8_1.arm
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS 8.1 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  - android-cts/results/[^/]+/proto/test-record\.pb.*
+  result_file: test_result.xml
+  retry_command_line: cts --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://dl.google.com/dl/android/cts/android-cts-8.1_r25-linux_x86-arm.zip
+    mount_zip: true
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  visibility_type: PUBLIC
+- command: cts
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite 9.0 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: android.cts.9_0.arm
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS 9.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  - android-cts/results/[^/]+/proto/test-record\.pb.*
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://dl.google.com/dl/android/cts/android-cts-9.0_r20-linux_x86-arm.zip
+    mount_zip: true
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  visibility_type: PUBLIC
+- command: cts-instant
+  context_file_dir: android-cts_instant/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite for Instant Apps 9.0 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts_instant/tools:${TF_WORK_DIR}/android-cts_instant/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts_instant/lib:${TF_WORK_DIR}/android-cts_instant/lib64
+  id: android.cts_instant.9_0.arm
+  java_properties:
+  - name: CTS_INSTANT_ROOT
+    value: ${TF_WORK_DIR}
+  name: CTS for Instant Apps 9.0 (ARM)
+  output_file_patterns:
+  - android-cts_instant/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts_instant/results/[^/]+/compatibility_result\..*
+  - android-cts_instant/results/[^/]+/logo.png
+  - android-cts_instant/results/[^/]+/test_result.xml
+  - android-cts/results/[^/]+/proto/test-record\.pb.*
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - decompress: true
+    default_download_url: https://dl.google.com/dl/android/cts/android-cts_instant-9.0_r20-linux_x86-arm.zip
+    mount_zip: true
+    name: android-cts_instant.zip
+    test_resource_type: TEST_PACKAGE
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Latest developer build for Compatibility Test Suite 10.0 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts.10_0.arm.dev
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS 10.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android10-tests-dev/test_suites_arm64/LATEST/android-cts.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Latest developer build for Compatibility Test Suite 11.0 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts.11_0.dev
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS 11.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android11-tests-dev/test_suites_arm64/LATEST/android-cts.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Latest developer build for Compatibility Test Suite 12.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts.12_0.dev
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS 12.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android12-tests-dev/test_suites_arm64/LATEST/android-cts.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Latest developer build for Compatibility Test Suite 12.1 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts.12_1.dev
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS 12.1 (ARM, devbuild)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android12L-tests-dev/test_suites_arm64/LATEST/android-cts.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Latest developer build for Compatibility Test Suite 13.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts.13_0.dev
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS 13.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android13-tests-dev/test_suites_arm64/LATEST/android-cts.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Latest developer build for Compatibility Test Suite 14.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts.14_0.dev
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx16g
+  name: CTS 14.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android14-tests-dev/test_suites_arm64/LATEST/android-cts.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts --enable-token-sharding
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Latest developer build for Compatibility Test Suite 15.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts.15_0.dev
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx24g
+  name: CTS 15.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android15-tests-dev/test_suites_arm64-ap3a/LATEST/android-cts.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts-suite
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Latest developer build for Compatibility Test Suite 8.0 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts.8_0.arm.dev
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS 8.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: cts --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-oreo-cts-dev/test_suites_arm64/LATEST/android-cts.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts-suite
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Latest developer build for Compatibility Test Suite 8.1 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts.8_1.arm.dev
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS 8.1 (ARM, devbuild)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: cts --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-oreo-mr1-cts-dev/test_suites_arm64/LATEST/android-cts.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Latest developer build for Compatibility Test Suite 9.0 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts.9_0.arm.dev
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS 9.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-pie-cts-dev/test_suites_arm64/LATEST/android-cts.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts-on-gsi
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Compatibility Test Suite on Generic System Image 10.0 (ARM)
+  env_vars:
+  - name: TEST_WORK_DIR
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts_on_gsi.10_0.arm
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: CTS-on-GSI 10.0 (ARM)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/open?id=10NfHQYHCKXK63Nme0Uian2OkeFXNlAml
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts-on-gsi
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite on Generic System Image 11.0 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts_on_gsi.11_0.arm
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS-on-GSI 11.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://dl.google.com/dl/android/cts/android-cts-11_r15-linux_x86-arm.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts-on-gsi
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite on Generic System Image 12.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts_on_gsi.12_0.arm
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS-on-GSI 12.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://dl.google.com/dl/android/cts/android-cts-12_r14-linux_x86-arm.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts-on-gsi
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite on Generic System Image 12.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts_on_gsi.12_1.arm
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS-on-GSI 12.1 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://dl.google.com/dl/android/cts/android-cts-12.1_r12-linux_x86-arm.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts-on-gsi
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite on Generic System Image 13.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts_on_gsi.13_0.arm
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: CTS-on-GSI 13.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://dl.google.com/dl/android/cts/android-cts-13_r10-linux_x86-arm.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts-on-gsi
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite on Generic System Image 14.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts_on_gsi.14_0.arm
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx16g
+  name: CTS-on-GSI 14.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://dl.google.com/dl/android/cts/android-cts-14_r6-linux_x86-arm.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts-on-gsi
+  context_file_dir: android-cts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+  description: Compatibility Test Suite on Generic System Image 15.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-cts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-cts/tools:${TF_WORK_DIR}/android-cts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-cts/lib:${TF_WORK_DIR}/android-cts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts_on_gsi.15_0.arm
+  java_properties:
+  - name: CTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx24g
+  name: CTS-on-GSI 15.0 (ARM)
+  output_file_patterns:
+  - android-cts/logs/.*
+  - android-cts/results/.+\.html
+  - android-cts/results/[^/]+/compatibility_result\..*
+  - android-cts/results/[^/]+/logo.png
+  - android-cts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://dl.google.com/dl/android/cts/android-cts-15_r2-linux_x86-arm.zip
+    name: android-cts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: cts-on-gsi
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Compatibility Test Suite on Generic System Image 9.0 (ARM)
+  env_vars:
+  - name: TEST_WORK_DIR
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.cts_on_gsi.9_0.arm
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: CTS-on-GSI 9.0 (ARM)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: cts-on-gsi-retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/open?id=1Xr_CMAldS0mRihggoF6fvPU-5VcHtn6v
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: gts
+  context_file_dir: android-gts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Google Mobile Services Test Suite 10.0 for Android 10
+  env_vars:
+  - name: APE_API_KEY
+    value: ${TF_WORK_DIR}/ape_api_key.json
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-gts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-gts/tools:${TF_WORK_DIR}/android-gts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-gts/lib:${TF_WORK_DIR}/android-gts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.gts.10_0.android10
+  java_properties:
+  - name: GTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: GTS 10.0 for Android 10
+  output_file_patterns:
+  - android-gts/logs/latest/.*
+  - android-gts/results/latest/.*\.html
+  - android-gts/results/latest/compatibility_result\..*
+  - android-gts/results/latest/logo.png
+  - android-gts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/file/d/1A76hPoTbD8jxtg8jTcSDOD3ID82-GJsM/view?usp=drive_link&resourcekey=0-pStQyLMPvV_oAJkPTIK3VQ
+    name: android-gts.zip
+    test_resource_type: TEST_PACKAGE
+  - name: ape_api_key.json
+    test_resource_type: UNKNOWN
+  visibility_type: PUBLIC
+- command: gts --module-arg GtsExoPlayerTestCases:config-url:https://storage.googleapis.com/exoplayer-test-media-1/gen-4/dynamic-config-sdcard-1.0.json
+    --module-arg "GtsYouTubeTestCases:skip-media-download:true" --module-arg "GtsYouTubeTestCases:instrumentation-arg:media-path:=/sdcard/test"
+    --module-arg "GtsMediaTestCases:instrumentation-arg:media-path:=file:///sdcard/wvmedia"
+  context_file_dir: android-gts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Google Mobile Services Test Suite 10.0 with preloaded media files
+  env_vars:
+  - name: APE_API_KEY
+    value: ${TF_WORK_DIR}/ape_api_key.json
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-gts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-gts/tools:${TF_WORK_DIR}/android-gts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-gts/lib:${TF_WORK_DIR}/android-gts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.gts.10_0.android10.with_media_files
+  java_properties:
+  - name: GTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: GTS 10.0 for Android 10 (with media files)
+  output_file_patterns:
+  - android-gts/logs/latest/.*
+  - android-gts/results/latest/.*\.html
+  - android-gts/results/latest/compatibility_result\..*
+  - android-gts/results/latest/logo.png
+  - android-gts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/file/d/1A76hPoTbD8jxtg8jTcSDOD3ID82-GJsM/view?usp=drive_link&resourcekey=0-pStQyLMPvV_oAJkPTIK3VQ
+    name: android-gts.zip
+    test_resource_type: TEST_PACKAGE
+  - name: ape_api_key.json
+    test_resource_type: UNKNOWN
+  visibility_type: PUBLIC
+- command: gts
+  context_file_dir: android-gts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Google Mobile Services Test Suite 12.0 for Android 12-15
+  env_vars:
+  - name: APE_API_KEY
+    value: ${TF_WORK_DIR}/ape_api_key.json
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-gts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-gts/tools:${TF_WORK_DIR}/android-gts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-gts/lib:${TF_WORK_DIR}/android-gts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.gts.12_0.android12_15
+  java_properties:
+  - name: GTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: GTS 12.0 for Android 12-15
+  output_file_patterns:
+  - android-gts/logs/latest/.*
+  - android-gts/results/latest/.*\.html
+  - android-gts/results/latest/compatibility_result\..*
+  - android-gts/results/latest/logo.png
+  - android-gts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/file/d/1y-xL_6ek6qHhZD0tsc8lEgxMBMSvbdDW/view?usp=drive_link&resourcekey=0-jK3QzbLrsFveHxNcRMdM3Q
+    name: android-gts.zip
+    test_resource_type: TEST_PACKAGE
+  - name: ape_api_key.json
+    test_resource_type: UNKNOWN
+  visibility_type: PUBLIC
+- command: gts --module-arg GtsExoPlayerTestCases:config-url:https://storage.googleapis.com/exoplayer-test-media-1/gen-4/dynamic-config-sdcard-1.0.json
+    --module-arg "GtsYouTubeTestCases:skip-media-download:true" --module-arg "GtsYouTubeTestCases:instrumentation-arg:media-path:=/sdcard/test"
+    --module-arg "GtsMediaTestCases:instrumentation-arg:media-path:=file:///sdcard/wvmedia"
+  context_file_dir: android-gts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Google Mobile Services Test Suite 12.0 with preloaded media files
+  env_vars:
+  - name: APE_API_KEY
+    value: ${TF_WORK_DIR}/ape_api_key.json
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-gts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-gts/tools:${TF_WORK_DIR}/android-gts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-gts/lib:${TF_WORK_DIR}/android-gts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.gts.12_0.android12_15.with_media_files
+  java_properties:
+  - name: GTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: GTS 12.0 for Android 12-15 (with media files)
+  output_file_patterns:
+  - android-gts/logs/latest/.*
+  - android-gts/results/latest/.*\.html
+  - android-gts/results/latest/compatibility_result\..*
+  - android-gts/results/latest/logo.png
+  - android-gts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/file/d/1y-xL_6ek6qHhZD0tsc8lEgxMBMSvbdDW/view?usp=drive_link&resourcekey=0-jK3QzbLrsFveHxNcRMdM3Q
+    name: android-gts.zip
+    test_resource_type: TEST_PACKAGE
+  - name: ape_api_key.json
+    test_resource_type: UNKNOWN
+  visibility_type: PUBLIC
+- command: gts -m GtsEdiHostTestCases --primary-abi-only --compatibility:test-arg
+    com.android.compatibility.common.tradefed.testtype.JarHostTest:set-option:android.edi.cts.VbmetaDeviceInfo:current-build-path:${BUILD_SOURCE_PATH}
+  context_file_dir: android-gts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Latest Google Mobile Services Test Suite Release for Xts Requirements
+    Detection
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-gts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-gts/tools:${TF_WORK_DIR}/android-gts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-gts/lib:${TF_WORK_DIR}/android-gts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.gts.latest_release.xts_requirements_detection
+  java_properties:
+  - name: GTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: Latest GTS release for xTS requirements detection
+  output_file_patterns:
+  - android-gts/logs/latest/.*
+  - android-gts/results/latest/.*\.html
+  - android-gts/results/latest/compatibility_result\..*
+  - android-gts/results/latest/logo.png
+  - android-gts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/file/d/1y-xL_6ek6qHhZD0tsc8lEgxMBMSvbdDW/view?usp=drive_link&resourcekey=0-jK3QzbLrsFveHxNcRMdM3Q
+    name: android-gts.zip
+    test_resource_type: TEST_PACKAGE
+  visibility_type: HIDDEN
+- command: sts-dynamic-full
+  context_file_dir: android-sts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Security Test Suite with elevated-permission tests
+  env_vars:
+  - name: APE_API_KEY
+    value: ${TF_WORK_DIR}/ape_api_key.json
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-sts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-sts/tools:${TF_WORK_DIR}/android-sts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-sts/lib:${TF_WORK_DIR}/android-sts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.sts.engbuild.full
+  java_properties:
+  - name: STS_ROOT
+    value: ${TF_WORK_DIR}
+  name: STS (User-debug/Eng Build) Full
+  output_file_patterns:
+  - android-sts/logs/latest/.*
+  - android-sts/results/latest/.*\.html
+  - android-sts/results/latest/compatibility_result\..*
+  - android-sts/results/latest/logo.png
+  - android-sts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  setup_scripts:
+  - unzip -P sts android-sts.zip_
+  test_resource_defs:
+  - default_download_url: mtt:///google_drive/_id/1LlidXqQKu9lt_i8kjnlCtRy6O3igJTC_/2021-12/STS/android-sts-12.0_202112-linux-arm64.zip
+    name: android-sts.zip_
+    test_resource_type: TEST_PACKAGE
+  - name: ape_api_key.json
+    test_resource_type: UNKNOWN
+  visibility_type: PUBLIC
+- command: sts-dynamic-incremental
+  context_file_dir: android-sts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Security Test Suite with elevated-permission tests
+  env_vars:
+  - name: APE_API_KEY
+    value: ${TF_WORK_DIR}/ape_api_key.json
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-sts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-sts/tools:${TF_WORK_DIR}/android-sts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-sts/lib:${TF_WORK_DIR}/android-sts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.sts.engbuild.incremental
+  java_properties:
+  - name: STS_ROOT
+    value: ${TF_WORK_DIR}
+  name: STS (User-debug/Eng Build) Incremental
+  output_file_patterns:
+  - android-sts/logs/latest/.*
+  - android-sts/results/latest/.*\.html
+  - android-sts/results/latest/compatibility_result\..*
+  - android-sts/results/latest/logo.png
+  - android-sts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  setup_scripts:
+  - unzip -P sts android-sts.zip_
+  test_resource_defs:
+  - default_download_url: mtt:///google_drive/_id/1LlidXqQKu9lt_i8kjnlCtRy6O3igJTC_/2021-12/STS/android-sts-12.0_202112-linux-arm64.zip
+    name: android-sts.zip_
+    test_resource_type: TEST_PACKAGE
+  - name: ape_api_key.json
+    test_resource_type: UNKNOWN
+  visibility_type: PUBLIC
+- command: sts-dynamic-full-user
+  context_file_dir: android-sts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Security Test Suite
+  env_vars:
+  - name: APE_API_KEY
+    value: ${TF_WORK_DIR}/ape_api_key.json
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-sts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-sts/tools:${TF_WORK_DIR}/android-sts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-sts/lib:${TF_WORK_DIR}/android-sts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.sts.userbuild.full
+  java_properties:
+  - name: STS_ROOT
+    value: ${TF_WORK_DIR}
+  name: STS (User Build) Full
+  output_file_patterns:
+  - android-sts/logs/latest/.*
+  - android-sts/results/latest/.*\.html
+  - android-sts/results/latest/compatibility_result\..*
+  - android-sts/results/latest/logo.png
+  - android-sts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  setup_scripts:
+  - unzip -P sts android-sts.zip_
+  test_resource_defs:
+  - default_download_url: mtt:///google_drive/_id/1LlidXqQKu9lt_i8kjnlCtRy6O3igJTC_/2021-12/STS/android-sts-12.0_202112-linux-arm64.zip
+    name: android-sts.zip_
+    test_resource_type: TEST_PACKAGE
+  - name: ape_api_key.json
+    test_resource_type: UNKNOWN
+  visibility_type: PUBLIC
+- command: sts-dynamic-incremental-user
+  context_file_dir: android-sts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Security Test Suite
+  env_vars:
+  - name: APE_API_KEY
+    value: ${TF_WORK_DIR}/ape_api_key.json
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-sts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-sts/tools:${TF_WORK_DIR}/android-sts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-sts/lib:${TF_WORK_DIR}/android-sts/lib64
+  id: gs://android-test-catalog/prod/gms.yaml::android.sts.userbuild.incremental
+  java_properties:
+  - name: STS_ROOT
+    value: ${TF_WORK_DIR}
+  name: STS (User Build) Incremental
+  output_file_patterns:
+  - android-sts/logs/latest/.*
+  - android-sts/results/latest/.*\.html
+  - android-sts/results/latest/compatibility_result\..*
+  - android-sts/results/latest/logo.png
+  - android-sts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  setup_scripts:
+  - unzip -P sts android-sts.zip_
+  test_resource_defs:
+  - default_download_url: mtt:///google_drive/_id/1LlidXqQKu9lt_i8kjnlCtRy6O3igJTC_/2021-12/STS/android-sts-12.0_202112-linux-arm64.zip
+    name: android-sts.zip_
+    test_resource_type: TEST_PACKAGE
+  - name: ape_api_key.json
+    test_resource_type: UNKNOWN
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    output_idle_timeout_seconds: 0
+  description: Vendor Test Suite 10.0 (ARM)
+  env_vars:
+  - name: TEST_WORK_DIR
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.10_0.arm
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: VTS 10.0 (ARM)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/file/d/1ZLOLvFhqvT0uRQxGtaBCV1WwrOoXjiFe/view?resourcekey=0-si_iI4hTzzaYNiGSwEfKUA
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    output_idle_timeout_seconds: 0
+  description: Latest developer build for Vendor Test Suite 10.0 (ARM)
+  env_vars:
+  - name: TEST_WORK_DIR
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.10_0.arm.dev
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: VTS 10.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android10-tests-dev/test_suites_arm64/LATEST/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    output_idle_timeout_seconds: 0
+  description: Vendor Test Suite 11.0 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.11_0.arm
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: VTS 11.0 (ARM)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android11-tests-release/test_suites_arm64/11302445/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+    output_idle_timeout_seconds: 0
+  description: Latest developer build for Vendor Test Suite 11.0 (ARM)
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools/vts-tradefed.jar:${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.11_0.arm.dev
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: VTS 11.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android11-tests-dev/test_suites_arm64/LATEST/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    output_idle_timeout_seconds: 0
+  description: Vendor Test Suite 12.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-vts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.12_0.arm
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: VTS 12.0 (ARM)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android12-tests-release/test_suites_arm64/12458034/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+    output_idle_timeout_seconds: 0
+  description: Latest developer build for Vendor Test Suite 12.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-vts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools/vts-tradefed.jar:${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.12_0.arm.dev
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: VTS 12.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android12-tests-dev/test_suites_arm64/LATEST/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+    output_idle_timeout_seconds: 0
+  description: Vendor Test Suite 12.1 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-vts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.12_1.arm
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: VTS 12.1 (ARM)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android12L-tests-release/test_suites_arm64/12458099/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+    output_idle_timeout_seconds: 0
+  description: Latest developer build for Vendor Test Suite 12.1 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-vts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools/vts-tradefed.jar:${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.12_1.arm.dev
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: VTS 12.1 (ARM, devbuild)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android12L-tests-dev/test_suites_arm64/LATEST/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+    output_idle_timeout_seconds: 0
+  description: Vendor Test Suite 13.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-vts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.13_0.arm
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: VTS 13.0 (ARM)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android13-tests-release/test_suites_arm64/12458100/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+    output_idle_timeout_seconds: 0
+  description: Latest developer build for Vendor Test Suite 13.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-vts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools/vts-tradefed.jar:${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.13_0.arm.dev
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: VTS 13.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android13-tests-dev/test_suites_arm64/LATEST/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+    output_idle_timeout_seconds: 0
+  description: Vendor Test Suite 14.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-vts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.14_0.arm
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: VTS 14.0 (ARM)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android14-tests-release/test_suites_arm64/12458103/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+    output_idle_timeout_seconds: 0
+  description: Latest developer build for Vendor Test Suite 14.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-vts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools/vts-tradefed.jar:${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.14_0.arm.dev
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: VTS 14.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android14-tests-dev/test_suites_arm64/LATEST/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+    output_idle_timeout_seconds: 0
+  description: Vendor Test Suite 15.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-vts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.15_0.arm
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: VTS 15.0 (ARM)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android15-tests-release/test_suites_arm64/12454383/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  default_test_run_parameters:
+    max_retry_on_test_failures: 3
+    output_idle_timeout_seconds: 0
+  description: Latest developer build for Vendor Test Suite 15.0 (ARM)
+  env_vars:
+  - name: JAVA_HOME
+    value: ${TF_WORK_DIR}/android-vts/jdk
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools/vts-tradefed.jar:${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.15_0.arm.dev
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx6g
+  name: VTS 15.0 (ARM, devbuild)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: mtt:///android_ci/aosp-android15-tests-dev/test_suites_arm64-ap3a/LATEST/android-vts.zip
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: vts --python-venv:python-version=2.7
+  context_file_dir: android-vts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Vendor Test Suite 9.0 (ARM)
+  env_vars:
+  - name: TEST_WORK_DIR
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-vts/tools:${TF_WORK_DIR}/android-vts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-vts/lib:${TF_WORK_DIR}/android-vts/lib64
+  - name: VTS_TESTCASES
+    value: ${TF_WORK_DIR}/android-vts/testcases
+  id: gs://android-test-catalog/prod/gms.yaml::android.vts.9_0.arm
+  java_properties:
+  - name: VTS_ROOT
+    value: ${TF_WORK_DIR}
+  jvm_options:
+  - -Xmx4g
+  name: VTS 9.0 (ARM)
+  output_file_patterns:
+  - android-vts/logs/latest/.*
+  - android-vts/results/latest/.*\.html
+  - android-vts/results/latest/compatibility_result\..*
+  - android-vts/results/latest/logo.png
+  - android-vts/results/latest/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: vts --python-venv:python-version=2.7 --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - default_download_url: https://drive.google.com/open?id=1Xr_CMAldS0mRihggoF6fvPU-5VcHtn6v
+    name: android-vts.zip
+    test_resource_type: TEST_PACKAGE
+  upload_file_patterns:
+  - test_result.*\.html
+  - compatibility_result\..*
+  - logo\.png
+  - test_result\.xml
+  - tool-logs/(?!(subprocess-)?(module-configuration|filter)).+
+  visibility_type: PUBLIC
+- command: mts
+  context_file_dir: android-mts/results/
+  context_file_pattern: '[\d_\.]+\.zip'
+  description: Mainline Test Suite
+  env_vars:
+  - name: TF_PATH
+    value: ${TF_WORK_DIR}/android-mts/tools:${TF_WORK_DIR}/android-mts/testcases
+  - name: LD_LIBRARY_PATH
+    value: ${TF_WORK_DIR}/android-mts/lib:${TF_WORK_DIR}/android-mts/lib64
+  id: gs://android-test-catalog/prod/mts.yaml::android.mts
+  java_properties:
+  - name: MTS_ROOT
+    value: ${TF_WORK_DIR}
+  name: MTS
+  output_file_patterns:
+  - android-mts/logs/.*
+  - android-mts/results/.+\.html
+  - android-mts/results/[^/]+/compatibility_result\..*
+  - android-mts/results/[^/]+/logo.png
+  - android-mts/results/[^/]+/test_result.xml
+  result_file: test_result.xml
+  retry_command_line: retry --retry 0
+  runner_sharding_args: --shard-count ${TF_SHARD_COUNT}
+  test_resource_defs:
+  - name: android-mts.zip
+    test_resource_type: TEST_PACKAGE
+  visibility_type: PUBLIC
+- command: uicd/uiconductor --work-dir ${TF_WORK_DIR} --uicd-cli-jar uicd_cli.jar
+    --uicd-test default tests
+  context_file_pattern: uicd_results.pb
+  description: Runs pre-recorded UIConductor test cases.
+  id: gs://android-test-catalog/prod/uicd.yaml::uicd_test
+  name: UIConductor Test
+  output_file_patterns:
+  - uicd-basepath/output/.*
+  retry_command_line: uicd/uiconductor --work-dir ${TF_WORK_DIR} --uicd-cli-jar uicd_cli.jar
+    --uicd-test default tests --previous-results uicd_results.pb
+  test_resource_defs:
+  - default_download_url: https://github.com/google/android-uiconductor/raw/36a3c4de4a84420c1d8fd74f83d9026ef42a25f5/prebuild/uicdcli/uicd-commandline.jar
+    name: uicd_cli.jar
+    test_resource_type: UNKNOWN
+  - decompress: true
+    decompress_dir: tests
+    name: uicd_test.zip
+    test_resource_type: UNKNOWN
+  visibility_type: PUBLIC
+- command: util/timewaster
+  description: Empty test suite used for device preparation or experimentation
+  id: noop
+  name: NOOP
+  visibility_type: PUBLIC

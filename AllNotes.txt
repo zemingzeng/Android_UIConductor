@@ -1,0 +1,77 @@
+export NODE_OPTIONS=--openssl-legacy-provider
+nvm install 18 (install nodejs 18 version)
+gradle 6.5
+gradle 
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+npm install --legacy-peer-deps
+npm i --legacy-peer-deps
+
+sudo systemctl status mysql.service
+sudo systemctl enable mysql
+sudo systemctl start mysql
+systemctl restart mysql
+sudo systemctl stop mysql
+harmandb--->1qaz
+root---->PKCxZkqBA5ihoIxS
+show databases;
+show tables;
+select user from mysql.user;
+sudo mysql -u  root -p
+alter user 'harmandb'@'localhost' IDENTIFIED By '1qaz';
+flush privileges;
+use database;
+/var/lib/mysql 
+SHOW GRANTS FOR 'harmandb'@'localhost';
+GRANT ALL PRIVILEGES ON *.* TO 'harmandb'@'host';
+CREATE USER 'newuser'@'localhost' IDENTIFIED BY 'password';
+sudo cat /etc/mysql/mysql.conf.d/mysqld.cnf ====> [mysqld] : grant-tables = ON
+select database();
+
+sudo apt install mysql-client-core-8.0
+sudo apt install mariadb-client-core-10.6
+sudo apt install mysql-server
+
+
+sudo apt install ffmpeg libsdl2-2.0-0 adb wget gcc pkg-config meson libsdl2-dev libavcodec-dev libavdevice-dev libavformat-dev libavutil-dev libswresample-dev libusb-1.0-0 libusb-1.0-0-dev
+
+sudo apt-get install libusb-1.0-0-dev
+sudo apt-get install libusb-1.0-0
+sudo apt-get remove libusb-1.0-0
+
+CREATE DATABASE IF NOT EXISTS `uicddb`;
+source "/home/test/harman/UIConductor/android-uiconductor-master/backend/recorder/db/initdb.sql";
+
+https://storage.googleapis.com/android-mtt.appspot.com/prod/mtt.zip
+https://linuxcapable.com/how-to-install-python-3-10-on-ubuntu-linux/             install python3.x
+https://nodejs.org/en/download         node.js install
+Angular CLI: 1.7.4
+npm install @angular/cli@1.7.4 -g
+ssh-keygen -t rsa -C "zemingzeng@126.com"
+
+
+ssh -v git@github.com
+ssh-agent -s
+ssh-add ~/.ssh/id_rsa
+ssh -T git@github.com
+
+npm outdated -g
+
+1.switch python3.10
+2.apk_pkg.so /usr/lib/python3/dist-packages/
+3.pip install --upgrade --force-reinstall setuptools
+4.maybe edit /etc/apt/source.list
+
+python3.11 for ssl :
+https://gitcode.csdn.net/65ec441f1a836825ed795c28.html?dp_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6MzcwNTE1NiwiZXhwIjoxNzQxMjU0MTIwLCJpYXQiOjE3NDA2NDkzMjAsInVzZXJuYW1lIjoic2luYXRfMjAyNzg1NzcifQ.m4v1H7CjKaEhNBhHrjJ37yxnjyikMB1Opfvxva8rSe4&spm=1001.2101.3001.6650.2&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7Eactivity-2-129421953-blog-107913822.235%5Ev43%5Epc_blog_bottom_relevance_base4&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7Eactivity-2-129421953-blog-107913822.235%5Ev43%5Epc_blog_bottom_relevance_base4&utm_relevant_index=5
+
+下载最新版的OpenSSL：wget https://www.openssl.org/source/openssl-3.0.2.tar.gz --no-check-certificate
+tar -zxvf openssl-3.0.2.tar.gz
+./Configure --prefix=/usr/local/openssl
+make && make install
+cp -rf /usr/local/openssl/lib64 /usr/local/openssl/lib
+
+python3.11
+wget https://www.python.org/ftp/python/3.11.2/Python-3.11.2.tgz
+./configure --prefix=/usr/local/python3 --with-openssl=/usr/local/openssl --with-openssl-rpath=auto
+make && make install
+
